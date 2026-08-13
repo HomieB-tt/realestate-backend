@@ -22,26 +22,13 @@ interface PropertyRow {
   address_line: string;
   city: string;
   country: string;
-  location: { type: 'Point'; coordinates: [number, number] } | string;
+  location_geojson: { type: 'Point'; coordinates: [number, number] };
   created_at: string;
   updated_at: string;
 }
 
 function rowToEntity(row: PropertyRow): Property {
-  // Supabase/PostGIS returns geography as GeoJSON when selected with
-  // `ST_AsGeoJSON` or as a hex-encoded WKB string otherwise. We standardize
-  // on GeoJSON by using the `properties_geojson` view/RPC in production;
-  // this mapper assumes the GeoJSON shape.
-  let lng: number;
-  let lat: number;
-
-  if (typeof row.location === 'string') {
-    throw new Error(
-      'Expected GeoJSON location from Supabase query — ensure the select uses ST_AsGeoJSON(location) as location',
-    );
-  } else {
-    [lng, lat] = row.location.coordinates;
-  }
+  const [lng, lat] = row.location_geojson.coordinates;
 
   return Property.create({
     id: row.id,
@@ -90,7 +77,7 @@ function entityToRow(property: Property): Record<string, unknown> {
 const SELECT_WITH_GEOJSON = `
   id, agent_id, title, description, listing_type, status, price, currency,
   bedrooms, bathrooms, area_sqm, address_line, city, country,
-  location:location::json,
+  location_geojson,
   created_at, updated_at
 `;
 

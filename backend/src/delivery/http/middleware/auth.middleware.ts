@@ -71,6 +71,8 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       .maybeSingle();
 
     if (profileError) {
+      // eslint-disable-next-line no-console
+      console.error('[auth] profile lookup failed:', profileError);
       res.status(500).json({ error: 'internal_error', message: 'Failed to resolve user profile' });
       return;
     }
