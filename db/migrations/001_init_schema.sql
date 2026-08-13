@@ -302,8 +302,7 @@ create policy "property_images_mutate_owner_or_admin"
   );
 
 -- ---- viewings -----------------------------------------------------------
--- Clients see their own bookings; agents see bookings on their properties;
--- admins see everything.
+
 create policy "viewings_select_participant_or_admin"
   on public.viewings for select
   using (
@@ -359,9 +358,8 @@ as $$
   limit max_results;
 $$;
 
--- ---------------------------------------------------------------------
 -- 10. STORAGE BUCKET (idempotent) for property images
--- ---------------------------------------------------------------------
+
 insert into storage.buckets (id, name, public)
 values ('property-images', 'property-images', true)
 on conflict (id) do nothing;
@@ -377,6 +375,4 @@ create policy "storage_property_images_agent_write"
     and auth.role() = 'authenticated'
   );
 
--- =====================================================================
--- END Migration 001
--- =====================================================================
+-- END of migration

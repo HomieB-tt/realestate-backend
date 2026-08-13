@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 import { env } from '../../../config/env';
+import { supabaseAdmin } from '../../../config/supabase';
 import { UserRole } from '../../../domain/entities/profile.entity';
 
 export interface AuthContext {
@@ -57,12 +58,30 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       return;
     }
 
+    // The role claim is NOT populated on the JWT unless a Supabase Auth
+    // Hook is configured to inject it (we haven't set one up). Instead,
+    // we resolve the authoritative role from `profiles` on every request.
+    // This is a small extra DB round-trip per request; acceptable for MVP
+    // scale, and it's the same table RLS itself trusts, so there's no
+    // risk of the two disagreeing.
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', payload.sub)
+      .maybeSingle();
+
+    if (profileError) {
+      res.status(500).json({ error: 'internal_error', message: 'Failed to resolve user profile' });
+      return;
+    }
+    if (!profile) {
+      res.status(401).json({ error: 'unauthorized', message: 'No profile found for authenticated user' });
+      return;
+    }
+
     req.auth = {
       userId: payload.sub,
-      // Fall back to 'client' if no custom role claim is present; the
-      // authoritative role still comes from `profiles.role` in the DB
-      // for anything security-sensitive — this claim is a fast-path hint.
-      role: (payload.user_role as UserRole) ?? 'client',
+      role: (profile.role as UserRole) ?? 'client',
       email: payload.email ?? null,
     };
 

@@ -14,7 +14,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Run as non-root for Kubernetes pod security standards.
+# Running as non-root for Kubernetes pod security standards.
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package.json package-lock.json* ./
