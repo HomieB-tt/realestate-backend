@@ -140,6 +140,22 @@ create unique index if not exists uq_property_cover
 -- ---------------------------------------------------------------------
 create extension if not exists btree_gist;
 
+-- Postgres' built-in `timestamptz + interval` operator is marked STABLE
+-- (not IMMUTABLE), because in general an interval containing months/days
+-- requires timezone-aware calendar math. Our usage only ever adds a pure
+-- minute offset, which is genuinely timezone-independent (timestamptz is
+-- stored internally as UTC), so we assert IMMUTABLE ourselves via a thin
+-- wrapper. This is required because STORED generated columns and
+-- expression-based constraints/indexes both require IMMUTABLE inputs.
+create or replace function public.add_minutes_immutable(ts timestamptz, mins integer)
+returns timestamptz
+language sql
+immutable
+parallel safe
+as $$
+  select ts + (mins || ' minutes')::interval;
+$$;
+
 create table if not exists public.viewings (
   id              uuid primary key default uuid_generate_v4(),
   property_id     uuid not null references public.properties (id) on delete cascade,
@@ -149,7 +165,7 @@ create table if not exists public.viewings (
   duration_mins   smallint not null default 30 check (duration_mins > 0),
   -- Generated column so we can express the time range for the EXCLUDE constraint.
   time_range      tstzrange generated always as (
-                    tstzrange(scheduled_at, scheduled_at + make_interval(mins => duration_mins), '[)')
+                    tstzrange(scheduled_at, public.add_minutes_immutable(scheduled_at, duration_mins), '[)')
                   ) stored,
   status          viewing_status not null default 'requested',
   notes           text,
