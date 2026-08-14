@@ -1,0 +1,30 @@
+name: realestate_mvp
+description: Real Estate MVP — mobile client (Flutter, feature-first, Riverpod)
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management (per architecture spec: Riverpod)
+  flutter_riverpod: ^2.5.1
+
+  # Auth + direct Supabase access (Auth only — see core/network/supabase_client.dart)
+  supabase_flutter: ^2.6.0
+
+  # HTTP client for the custom backend API
+  dio: ^5.7.0
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
