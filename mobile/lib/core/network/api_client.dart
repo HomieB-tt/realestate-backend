@@ -13,10 +13,9 @@ import 'supabase_client.dart';
 /// backend responds 401 (expired token) or the local session is stale, an
 /// interceptor forces a session refresh once before failing.
 class ApiClient {
-  ApiClient(this._dio, this._supabase);
+  ApiClient(this._dio);
 
   final Dio _dio;
-  final SupabaseClient _supabase;
 
   Future<Response<T>> get<T>(String path, {Map<String, dynamic>? queryParameters}) {
     return _dio.get<T>(path, queryParameters: queryParameters);
@@ -86,5 +85,5 @@ class ApiClient {
 final apiClientProvider = Provider<ApiClient>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
   final dio = ApiClient.buildDio(supabase);
-  return ApiClient(dio, supabase);
+  return ApiClient(dio);
 });

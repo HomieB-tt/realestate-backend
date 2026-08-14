@@ -12,7 +12,7 @@ Future<void> initSupabase() async {
   Env.assertConfigured();
   await Supabase.initialize(
     url: Env.supabaseUrl,
-    anonKey: Env.supabaseAnonKey,
+    publishableKey: Env.supabaseAnonKey,
   );
 }
 

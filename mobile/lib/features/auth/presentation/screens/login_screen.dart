@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_providers.dart';
+import '../../domain/entities/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -64,12 +65,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (result is AuthSuccess<dynamic>) {
+    if (result is AuthSuccess<AppUser>) {
       // Auth state change triggers currentUserProvider to refresh;
       // navigation to the authenticated shell is handled by the root
       // widget watching that provider (see main.dart).
-    } else if (result is AuthError<dynamic>) {
-      setState(() => _errorMessage = result.failure.message);
+    } else if (result is AuthError<AppUser>) {
+      // Extract the message here, while `result` is still promoted to
+      // AuthError<AppUser> — type promotion does not carry across
+      // closure boundaries, so reading `.failure` inside the setState
+      // callback below (where `result`'s static type reverts to the
+      // unpromoted AuthResult<AppUser>) would fail to compile.
+      final message = result.failure.message;
+      setState(() => _errorMessage = message);
     }
   }
 
