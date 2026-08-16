@@ -51,6 +51,22 @@ export class Viewing {
     });
   }
 
+  /**
+   * Reconstructs a Viewing from data already persisted in the database
+   * (used by repository row-mapping). Deliberately skips the
+   * "must be scheduled in the future" check that `create()` enforces —
+   * that rule is a creation-time business rule, not an invariant of the
+   * entity's existence. A viewing's scheduled time naturally moves into
+   * the past as real time advances; reading, confirming, cancelling, or
+   * marking it completed after that point must still work. Using the
+   * validating `create()` here would make any past-dated viewing
+   * unreadable, which previously broke confirm/cancel/lookup on
+   * anything not booked in the last few hours.
+   */
+  static fromPersistence(props: ViewingProps): Viewing {
+    return new Viewing(props);
+  }
+
   get id(): string {
     return this.props.id;
   }
