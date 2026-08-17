@@ -17,7 +17,7 @@ interface ViewingRow {
 }
 
 function rowToEntity(row: ViewingRow): Viewing {
-  return Viewing.create({
+  return Viewing.fromPersistence({
     id: row.id,
     propertyId: row.property_id,
     clientId: row.client_id,

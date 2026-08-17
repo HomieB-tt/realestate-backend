@@ -2,10 +2,13 @@ import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth.middleware';
 import { PropertyController } from '../controllers/property.controller';
 import { ViewingController } from '../controllers/viewing.controller';
+import { AdminController } from '../controllers/admin.controller';
 import { PropertyUsecase } from '../../../usecase/property.usecase';
 import { ViewingUsecase } from '../../../usecase/viewing.usecase';
+import { AdminUsecase } from '../../../usecase/admin.usecase';
 import { SupabasePropertyRepository } from '../../../repository/property.repository';
 import { PgViewingRepository } from '../../../repository/viewing.repository';
+import { SupabaseAdminRepository } from '../../../repository/admin.repository';
 
 /**
  * Composition root: concrete repository implementations are instantiated
@@ -16,12 +19,15 @@ import { PgViewingRepository } from '../../../repository/viewing.repository';
  */
 const propertyRepo = new SupabasePropertyRepository();
 const viewingRepo = new PgViewingRepository();
+const adminRepo = new SupabaseAdminRepository();
 
 const propertyUsecase = new PropertyUsecase(propertyRepo);
 const viewingUsecase = new ViewingUsecase(viewingRepo, propertyRepo);
+const adminUsecase = new AdminUsecase(adminRepo);
 
 const propertyController = new PropertyController(propertyUsecase);
 const viewingController = new ViewingController(viewingUsecase);
+const adminController = new AdminController(adminUsecase);
 
 export const router = Router();
 
@@ -43,3 +49,10 @@ router.post('/viewings/:id/confirm', authenticate, requireRole('agent', 'admin')
 router.post('/viewings/:id/cancel', authenticate, viewingController.cancel);
 router.get('/viewings/property/:propertyId', authenticate, viewingController.listForProperty);
 router.get('/viewings/mine/list', authenticate, viewingController.listMine);
+
+// ---- Admin ---------------------------------------------------------------
+// Every route here is admin-only: user management and unrestricted
+// property visibility/moderation.
+router.get('/admin/users', authenticate, requireRole('admin'), adminController.listUsers);
+router.patch('/admin/users/:id/role', authenticate, requireRole('admin'), adminController.updateUserRole);
+router.get('/admin/properties', authenticate, requireRole('admin'), adminController.listAllProperties);

@@ -7,7 +7,7 @@ import {
 } from '../domain/repositories/property.repository.interface';
 
 /** Shape of a row returned by Supabase for `properties`, with location as GeoJSON. */
-interface PropertyRow {
+export interface PropertyRow {
   id: string;
   agent_id: string;
   title: string;
@@ -27,7 +27,7 @@ interface PropertyRow {
   updated_at: string;
 }
 
-function rowToEntity(row: PropertyRow): Property {
+export function rowToEntity(row: PropertyRow): Property {
   const [lng, lat] = row.location_geojson.coordinates;
 
   return Property.create({
@@ -74,7 +74,7 @@ function entityToRow(property: Property): Record<string, unknown> {
   };
 }
 
-const SELECT_WITH_GEOJSON = `
+export const SELECT_WITH_GEOJSON = `
   id, agent_id, title, description, listing_type, status, price, currency,
   bedrooms, bathrooms, area_sqm, address_line, city, country,
   location_geojson,
