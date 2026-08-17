@@ -119,6 +119,25 @@ export class Property {
     return new Property({ ...this.props, status: 'published', updatedAt: new Date() });
   }
 
+  /**
+   * Reverses a publish decision — the listing stops appearing in public
+   * search (properties_within_radius / findByCity both filter on
+   * status = 'published'), but the agent keeps full ownership and can
+   * edit or re-publish later. This is deliberately a return to 'draft'
+   * rather than 'archived': 'archived' implies a more permanent,
+   * likely-final state (e.g. sold elsewhere, listing withdrawn for
+   * good), whereas unpublish is meant for temporary situations
+   * (under negotiation, needs edits, temporarily unavailable).
+   */
+  unpublish(): Property {
+    if (this.props.status !== 'published') {
+      throw new DomainValidationError(
+        `Cannot unpublish property in status "${this.props.status}"; must be "published"`,
+      );
+    }
+    return new Property({ ...this.props, status: 'draft', updatedAt: new Date() });
+  }
+
   isOwnedBy(agentId: string): boolean {
     return this.props.agentId === agentId;
   }

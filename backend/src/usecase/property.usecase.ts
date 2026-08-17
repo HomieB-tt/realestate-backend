@@ -32,6 +32,18 @@ export class PropertyUsecase {
     return this.propertyRepo.update(published);
   }
 
+  async unpublish(propertyId: string, requestingAgentId: string): Promise<Property> {
+    const property = await this.propertyRepo.findById(propertyId);
+    if (!property) {
+      throw new NotFoundError('Property', propertyId);
+    }
+    if (!property.isOwnedBy(requestingAgentId)) {
+      throw new ForbiddenError('Only the listing agent can unpublish this property');
+    }
+    const unpublished = property.unpublish();
+    return this.propertyRepo.update(unpublished);
+  }
+
   async getById(propertyId: string): Promise<Property> {
     const property = await this.propertyRepo.findById(propertyId);
     if (!property) {
@@ -47,6 +59,13 @@ export class PropertyUsecase {
       throw new Error('radiusMeters must be between 1 and 100000 (100km)');
     }
     return this.propertyRepo.findWithinRadius(params, filters);
+  }
+
+  async searchByCity(city: string, filters?: PropertyFilters): Promise<Property[]> {
+    if (!city || city.trim().length === 0) {
+      throw new Error('city must not be empty');
+    }
+    return this.propertyRepo.findByCity(city.trim(), filters);
   }
 
   async listByAgent(agentId: string): Promise<Property[]> {

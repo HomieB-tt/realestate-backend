@@ -39,6 +39,7 @@ router.get('/properties/:id', propertyController.getById);
 // Authenticated: agent-only mutations.
 router.post('/properties', authenticate, requireRole('agent', 'admin'), propertyController.create);
 router.post('/properties/:id/publish', authenticate, requireRole('agent', 'admin'), propertyController.publish);
+router.post('/properties/:id/unpublish', authenticate, requireRole('agent', 'admin'), propertyController.unpublish);
 router.get('/properties/mine/list', authenticate, requireRole('agent', 'admin'), propertyController.listMine);
 router.delete('/properties/:id', authenticate, requireRole('agent', 'admin'), propertyController.remove);
 

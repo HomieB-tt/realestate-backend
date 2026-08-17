@@ -45,6 +45,13 @@ export class PropertyController {
     res.status(200).json({ data: property.toJSON() });
   });
 
+  unpublish = asyncHandler(async (req: Request, res: Response) => {
+    const agentId = req.auth!.userId;
+    const id = requireParam(req.params.id, 'id');
+    const property = await this.usecase.unpublish(id, agentId);
+    res.status(200).json({ data: property.toJSON() });
+  });
+
   getById = asyncHandler(async (req: Request, res: Response) => {
     const id = requireParam(req.params.id, 'id');
     const property = await this.usecase.getById(id);
@@ -54,8 +61,29 @@ export class PropertyController {
   searchNearby = asyncHandler(async (req: Request, res: Response) => {
     const { lng, lat, radiusMeters, limit, listingType, minPrice, maxPrice, minBedrooms, city } = req.query;
 
+    const filters = {
+      listingType: listingType as ListingType | undefined,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      minBedrooms: minBedrooms ? Number(minBedrooms) : undefined,
+    };
+
+    // City search is a distinct mode, not just an extra filter on top of
+    // radius search — it deliberately ignores the caller's location
+    // entirely, so a search for a city outside the caller's current
+    // radius still finds matches. Takes priority when lng/lat aren't
+    // both provided alongside it.
+    if (city && !(lng && lat)) {
+      const properties = await this.usecase.searchByCity(city as string, filters);
+      res.status(200).json({ data: properties.map((p) => p.toJSON()) });
+      return;
+    }
+
     if (!lng || !lat || !radiusMeters) {
-      res.status(400).json({ error: 'validation_error', message: 'lng, lat, and radiusMeters are required query params' });
+      res.status(400).json({
+        error: 'validation_error',
+        message: 'Either city, or lng+lat+radiusMeters, must be provided',
+      });
       return;
     }
 
@@ -66,13 +94,7 @@ export class PropertyController {
         radiusMeters: Number(radiusMeters),
         limit: limit ? Number(limit) : undefined,
       },
-      {
-        listingType: listingType as ListingType | undefined,
-        minPrice: minPrice ? Number(minPrice) : undefined,
-        maxPrice: maxPrice ? Number(maxPrice) : undefined,
-        minBedrooms: minBedrooms ? Number(minBedrooms) : undefined,
-        city: city as string | undefined,
-      },
+      filters,
     );
 
     res.status(200).json({ data: properties.map((p) => p.toJSON()) });

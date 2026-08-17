@@ -51,6 +51,35 @@ export function rowToEntity(row: PropertyRow): Property {
   });
 }
 
+/**
+ * Applies the optional non-spatial filters (listing type, price range,
+ * min bedrooms, city substring) shared by both `findWithinRadius` and
+ * `findByCity`. Kept as in-memory filtering rather than SQL parameters
+ * for the MVP; move into the query itself if result sets grow large
+ * enough for this to matter for performance.
+ */
+function applyInMemoryFilters(properties: Property[], filters?: PropertyFilters): Property[] {
+  let results = properties;
+
+  if (filters?.listingType) {
+    results = results.filter((p) => p.toJSON().listingType === filters.listingType);
+  }
+  if (filters?.minPrice !== undefined) {
+    results = results.filter((p) => p.toJSON().price >= filters.minPrice!);
+  }
+  if (filters?.maxPrice !== undefined) {
+    results = results.filter((p) => p.toJSON().price <= filters.maxPrice!);
+  }
+  if (filters?.minBedrooms !== undefined) {
+    results = results.filter((p) => p.toJSON().bedrooms >= filters.minBedrooms!);
+  }
+  if (filters?.city) {
+    results = results.filter((p) => p.toJSON().city.toLowerCase().includes(filters.city!.toLowerCase()));
+  }
+
+  return results;
+}
+
 function entityToRow(property: Property): Record<string, unknown> {
   const p = property.toJSON();
   return {
@@ -109,29 +138,31 @@ export class SupabasePropertyRepository implements IPropertyRepository {
 
     if (error) throw new Error(`findWithinRadius failed: ${error.message}`);
 
-    let results = ((data ?? []) as PropertyRow[]).map(rowToEntity);
+    const results = ((data ?? []) as PropertyRow[]).map(rowToEntity);
+    return applyInMemoryFilters(results, filters);
+  }
 
-    // Additional in-memory filters for attributes not worth a bespoke RPC
-    // parameter yet (kept simple for the MVP; move into SQL if this list grows).
-    if (filters?.listingType) {
-      results = results.filter((p) => p.toJSON().listingType === filters.listingType);
-    }
-    if (filters?.minPrice !== undefined) {
-      results = results.filter((p) => p.toJSON().price >= filters.minPrice!);
-    }
-    if (filters?.maxPrice !== undefined) {
-      results = results.filter((p) => p.toJSON().price <= filters.maxPrice!);
-    }
-    if (filters?.minBedrooms !== undefined) {
-      results = results.filter((p) => p.toJSON().bedrooms >= filters.minBedrooms!);
-    }
-    if (filters?.city) {
-      results = results.filter(
-        (p) => p.toJSON().city.toLowerCase() === filters.city!.toLowerCase(),
-      );
-    }
+  /**
+   * City search — deliberately does NOT go through the radius RPC. A
+   * city search must find matches regardless of the searcher's current
+   * location; applying `filters.city` on top of an already
+   * radius-limited result set (as a client naively combining both might
+   * expect) would silently return nothing for any city outside that
+   * radius. This queries the full `properties` table directly instead.
+   */
+  async findByCity(city: string, filters?: PropertyFilters): Promise<Property[]> {
+    const { data, error } = await supabaseAdmin
+      .from('properties')
+      .select(SELECT_WITH_GEOJSON)
+      .eq('status', 'published')
+      .ilike('city', `%${city}%`)
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-    return results;
+    if (error) throw new Error(`findByCity failed: ${error.message}`);
+
+    const results = ((data ?? []) as unknown as PropertyRow[]).map(rowToEntity);
+    return applyInMemoryFilters(results, filters);
   }
 
   async findByAgentId(agentId: string): Promise<Property[]> {

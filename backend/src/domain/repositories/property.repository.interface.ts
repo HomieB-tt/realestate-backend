@@ -27,6 +27,15 @@ export interface IPropertyRepository {
   /** Radius search backed by the `properties_within_radius` PostGIS RPC. */
   findWithinRadius(params: RadiusSearchParams, filters?: PropertyFilters): Promise<Property[]>;
 
+  /**
+   * Search by city name, with no proximity constraint. Distinct from
+   * `findWithinRadius` because a city search should find matches
+   * regardless of the searcher's current location — filtering by city
+   * AFTER a radius cut would incorrectly return nothing for a city
+   * outside the caller's current search radius.
+   */
+  findByCity(city: string, filters?: PropertyFilters): Promise<Property[]>;
+
   findByAgentId(agentId: string): Promise<Property[]>;
 
   create(property: Property): Promise<Property>;
